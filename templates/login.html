@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Log in &middot; Receipt Parser{% endblock %}
+{% block content %}
+<div class="auth-card reveal torn">
+    <p class="eyebrow">— Cashier Desk —</p>
+    <h1>Welcome back</h1>
+    <p class="muted center">Log in to scan and file your receipts.</p>
+    <form method="post" action="{{ url_for('login_view') }}">
+        <label>Username
+            <input type="text" name="username" autocomplete="username"
+                   spellcheck="false" autofocus required>
+        </label>
+        <label>Password
+            <input type="password" name="password" autocomplete="current-password" required>
+        </label>
+        <button class="btn" type="submit">Log in</button>
+    </form>
+    <p class="muted center" style="margin-top:18px">No account? <a href="{{ url_for('register_view') }}">Sign up</a></p>
+</div>
+{% endblock %}

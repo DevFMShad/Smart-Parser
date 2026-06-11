@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#211a14">
+    <title>{% block title %}Receipt Parser{% endblock %}</title>
+
+    {# Preload the two most visible fonts to avoid a flash of fallback text #}
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+          href="{{ url_for('static', filename='fonts/fraunces-900.woff2') }}">
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+          href="{{ url_for('static', filename='fonts/hanken-grotesk-400.woff2') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='fonts.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <nav class="nav">
+        <a class="brand" href="{{ url_for('dashboard') }}">
+            <span class="logo" aria-hidden="true">🧾</span> Receipt&nbsp;Parser
+        </a>
+        <div class="nav-right">
+            {% if current_username %}
+                <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                {% if current_is_admin %}
+                    <a href="{{ url_for('audit_view') }}">Audit&nbsp;log</a>
+                {% endif %}
+                <span class="who">👤 {{ current_username }}{% if current_is_admin %} <span class="badge-admin">admin</span>{% endif %}</span>
+                <a class="btn-ghost" href="{{ url_for('logout_view') }}">Log&nbsp;out</a>
+            {% else %}
+                <a href="{{ url_for('login_view') }}">Log in</a>
+                <a class="btn-ghost" href="{{ url_for('register_view') }}">Sign&nbsp;up</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <main class="container" id="main">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div aria-live="polite">
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }} reveal">{{ message }}</div>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        University project &middot; Flask + Tesseract&nbsp;OCR &middot; SQLite
+    </footer>
+</body>
+</html>

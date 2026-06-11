@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Sign up &middot; Receipt Parser{% endblock %}
+{% block content %}
+<div class="auth-card reveal torn">
+    <p class="eyebrow">— New Account —</p>
+    <h1>Open a tab</h1>
+    <p class="muted center">Username 3+ characters, password 6+. The first
+        account becomes the&nbsp;admin.</p>
+    <form method="post" action="{{ url_for('register_view') }}">
+        <label>Username
+            <input type="text" name="username" autocomplete="username"
+                   spellcheck="false" autofocus required minlength="3">
+        </label>
+        <label>Password
+            <input type="password" name="password" autocomplete="new-password"
+                   required minlength="6">
+        </label>
+        <button class="btn" type="submit">Create account</button>
+    </form>
+    <p class="muted center" style="margin-top:18px">Already registered? <a href="{{ url_for('login_view') }}">Log in</a></p>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Audit log &middot; Receipt Parser{% endblock %}
+{% block content %}
+
+<a class="link" href="{{ url_for('dashboard') }}" style="color:var(--paper)">← Back to dashboard</a>
+
+<section class="card reveal" style="margin-top:14px">
+    <p class="eyebrow">— Admin only · append-only —</p>
+    <h1 style="font-family:var(--font-display);margin:0 0 6px">Audit log</h1>
+    <p class="muted">A tamper-evident record of every important action — logins,
+        uploads, deletions, failures, denied access and the daily purge job.</p>
+    {% if entries %}
+    <table class="table" style="margin-top:8px">
+        <thead><tr><th>When</th><th>User</th><th>Action</th><th>Detail</th></tr></thead>
+        <tbody>
+            {% for e in entries %}
+            <tr>
+                <td class="nowrap num">{{ e["created_at"] }}</td>
+                <td>{{ e["username"] or "—" }}</td>
+                <td><span class="tag">{{ e["action"] }}</span></td>
+                <td>{{ e["detail"] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="muted">No audit entries yet.</p>
+    {% endif %}
+</section>
+
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Receipt #{{ receipt["id"] }} &middot; Receipt Parser{% endblock %}
+{% block content %}
+
+<a class="link" href="{{ url_for('dashboard') }}" style="color:var(--paper)">← Back to dashboard</a>
+
+<section class="card detail-head reveal torn" style="margin-top:14px">
+    <div>
+        <p class="eyebrow">— Receipt No. {{ "%04d"|format(receipt["id"]) }} —</p>
+        <h1 style="font-family:var(--font-display);margin:0 0 6px">{{ receipt["merchant"] or receipt["original_name"] }}</h1>
+        <p class="meta-line">
+            Uploaded {{ receipt["uploaded_at"] }}
+            {% if receipt["process_ms"] %} · parsed in {{ "%.1f"|format(receipt["process_ms"]/1000) }}s{% endif %}
+            · file: {{ receipt["original_name"] }}
+        </p>
+    </div>
+    <div style="text-align:right;display:flex;flex-direction:column;gap:14px;align-items:flex-end">
+        {% if receipt["status"] == "processed" %}
+            <span class="stamp stamp-ok">✔ Processed</span>
+        {% else %}
+            <span class="stamp stamp-bad">✘ Failed</span>
+        {% endif %}
+        <form method="post" action="{{ url_for('receipt_delete', receipt_id=receipt['id']) }}"
+              onsubmit="return confirm('Delete this receipt? This cannot be undone.');">
+            <button class="btn-danger" type="submit">Delete</button>
+        </form>
+    </div>
+</section>
+
+<section class="cards">
+    <div class="card stat reveal">
+        <div class="stat-label">Category</div>
+        <div class="stat-value small"><span class="tag tag-{{ (receipt['category'] or 'Other')|lower }}">{{ receipt["category"] or "—" }}</span></div>
+    </div>
+    <div class="card stat reveal">
+        <div class="stat-label">Purchase date</div>
+        <div class="stat-value small">{{ receipt["purchase_date"] or "—" }}</div>
+    </div>
+    <div class="card stat reveal">
+        <div class="stat-label">Total</div>
+        <div class="stat-value">{{ "%.2f"|format(receipt["total"]) if receipt["total"] is not none else "—" }}</div>
+    </div>
+</section>
+
+<section class="card reveal">
+    <h2>Line items</h2>
+    {% if items %}
+    <div class="bars" style="margin-top:10px">
+        {% for item in items %}
+        <div class="leader">
+            <span class="name">{{ item["description"] }}
+                <span class="tag tag-{{ (item['category'] or 'Other')|lower }}" style="margin-left:6px">{{ item["category"] }}</span>
+            </span>
+            <span class="dots" aria-hidden="true"></span>
+            <span class="val">{{ "%.2f"|format(item["price"]) if item["price"] is not none else "—" }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% if receipt["total"] is not none %}
+    <div class="leader" style="margin-top:18px;border-top:2px solid var(--ink);padding-top:14px;font-size:1.05rem">
+        <span class="name" style="font-family:var(--font-display);font-weight:600">TOTAL</span>
+        <span class="dots" aria-hidden="true"></span>
+        <span class="val" style="font-weight:600;font-size:1.15rem">{{ "%.2f"|format(receipt["total"]) }}</span>
+    </div>
+    {% endif %}
+    {% else %}
+    <p class="muted">No individual line items were detected on this receipt.</p>
+    {% endif %}
+</section>
+
+<section class="card reveal">
+    <h2>Raw OCR text <span class="muted" style="font-family:var(--font-mono);font-size:.78rem">— what Tesseract actually read</span></h2>
+    <pre class="raw">{{ receipt["raw_text"] or "(no text)" }}</pre>
+</section>
+
+{% endblock %}

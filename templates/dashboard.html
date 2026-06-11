@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Dashboard &middot; Receipt Parser{% endblock %}
+{% block content %}
+
+<section class="hero">
+    <div class="hero-copy reveal">
+        <p class="eyebrow">— Expense Desk —</p>
+        <h1 class="page-title">File a receipt,<br>read every line.</h1>
+        <p class="muted">Upload a photo or PDF. We run real OCR, pull out the line
+            items, total it up, and sort the spend into categories — automatically.</p>
+    </div>
+
+    <form class="upload reveal" method="post" action="{{ url_for('upload') }}"
+          enctype="multipart/form-data">
+        <div class="ticket-head">
+            <span>Receipt&nbsp;Parser</span><span>No.&nbsp;{{ "%04d"|format(receipts|length + 1) }}</span>
+        </div>
+        <label class="file-drop">
+            📤 Choose a receipt
+            <input type="file" name="receipt"
+                   accept=".png,.jpg,.jpeg,.bmp,.tiff,.pdf" required>
+            <div class="muted" style="margin-top:6px;font-size:.72rem">Image or PDF · max&nbsp;10&nbsp;MB</div>
+        </label>
+        <button class="btn" type="submit">Scan &amp; parse</button>
+    </form>
+</section>
+
+<section class="cards">
+    <div class="card stat reveal">
+        <div class="stat-label">Receipts filed</div>
+        <div class="stat-value">{{ "%03d"|format(receipts|length) }}</div>
+    </div>
+    <div class="card stat reveal">
+        <div class="stat-label">Total spent</div>
+        <div class="stat-value">{{ "%.2f"|format(total_spent) }}</div>
+    </div>
+    <div class="card stat reveal">
+        <div class="stat-label">OCR pages today</div>
+        <div class="stat-value">{{ ocr_used }}<span class="stat-sub">&thinsp;/&thinsp;{{ ocr_limit }}</span></div>
+    </div>
+</section>
+
+{% if by_category %}
+<section class="card reveal">
+    <h2>Spending by category</h2>
+    <div class="bars">
+        {% set max_val = by_category[0][1] if by_category[0][1] > 0 else 1 %}
+        {% for cat, amount in by_category %}
+        <div class="bar-row">
+            <div class="leader">
+                <span class="name"><span class="tag tag-{{ cat|lower }}">{{ cat }}</span></span>
+                <span class="dots" aria-hidden="true"></span>
+                <span class="val">{{ "%.2f"|format(amount) }}</span>
+            </div>
+            <div class="bar-track">
+                <div class="bar-fill" style="width: {{ (amount / max_val * 100)|round(1) }}%"></div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<section class="card reveal">
+    <h2>Receipt history</h2>
+    {% if receipts %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Merchant</th><th>Date</th><th>Category</th>
+                <th class="num">Total</th><th>Status</th><th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in receipts %}
+            <tr>
+                <td>{{ r["merchant"] or r["original_name"] }}</td>
+                <td class="num">{{ r["purchase_date"] or "—" }}</td>
+                <td><span class="tag tag-{{ (r['category'] or 'Other')|lower }}">{{ r["category"] or "—" }}</span></td>
+                <td class="num">{{ "%.2f"|format(r["total"]) if r["total"] is not none else "—" }}</td>
+                <td>
+                    {% if r["status"] == "processed" %}
+                        <span class="ok">✔ processed</span>
+                    {% else %}
+                        <span class="bad">✘ failed</span>
+                    {% endif %}
+                </td>
+                <td class="num"><a class="link" href="{{ url_for('receipt_detail', receipt_id=r['id']) }}">View →</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="muted">No receipts yet — file your first one above. ☝️</p>
+    {% endif %}
+</section>
+
+{% endblock %}

@@ -1,0 +1,345 @@
+/* ===========================================================================
+   Receipt Parser — "Analog Receipt / Editorial Ledger"
+   ---------------------------------------------------------------------------
+   Concept: cream paper receipts on a dark, warm desk. Editorial serif
+   headings (Fraunces), grotesk body (Hanken Grotesk), monospace figures
+   (IBM Plex Mono) like a till printer. Signature details: torn paper edges,
+   rubber-stamp status badges, dotted leader lines for amounts.
+   Accessibility (Vercel Web Interface Guidelines): visible focus rings,
+   reduced-motion support, tabular numerals, semantic colour contrast.
+   =========================================================================== */
+
+:root {
+    /* --- Type --- */
+    --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+    --font-body:    "Hanken Grotesk", system-ui, -apple-system, sans-serif;
+    --font-mono:    "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+
+    /* --- Colour: warm desk + cream paper + stamp inks --- */
+    --desk:      #211a14;   /* deep espresso desk surface  */
+    --desk-2:    #2c241c;   /* raised desk panels (nav)    */
+    --paper:     #f7f1e4;   /* fresh receipt paper         */
+    --paper-2:   #efe7d6;   /* shaded paper / tracks       */
+    --ink:       #221c15;   /* main text on paper          */
+    --ink-soft:  #6f6353;   /* muted ink                   */
+    --rule:      #d8cdb6;   /* hairline rules on paper     */
+
+    --stamp:     #d8401f;   /* vermilion stamp / primary   */
+    --stamp-dk:  #b3330f;
+    --ok:        #2f7d56;   /* ledger green (processed)    */
+    --bad:       #c0341d;   /* failed                      */
+
+    --paper-on-desk: #f7f1e4;
+    --radius: 6px;
+    --shadow-paper: 0 18px 40px -18px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.18);
+}
+
+* { box-sizing: border-box; }
+
+html { color-scheme: dark; }
+
+body {
+    margin: 0;
+    font-family: var(--font-body);
+    color: var(--paper);
+    background-color: var(--desk);
+    /* warm vignette glow + subtle paper grain for atmosphere (not flat colour) */
+    background-image:
+        radial-gradient(1100px 600px at 78% -8%, rgba(216,64,31,.16), transparent 60%),
+        radial-gradient(900px 700px at 10% 110%, rgba(120,90,40,.18), transparent 55%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+/* fine grain overlay */
+body::before {
+    content: "";
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    opacity: .04;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+a { color: var(--stamp); text-decoration: none; }
+a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Skip link — visible only when focused (keyboard accessibility) */
+.skip-link {
+    position: absolute; left: 12px; top: -48px; z-index: 20;
+    background: var(--paper); color: var(--ink); padding: 10px 16px;
+    border-radius: var(--radius); font-family: var(--font-mono); font-size: .8rem;
+    transition: top .15s ease;
+}
+.skip-link:focus { top: 12px; text-decoration: none; }
+
+/* --- Accessible focus ring (keyboard only) ------------------------------- */
+:focus-visible {
+    outline: 3px solid var(--stamp);
+    outline-offset: 2px;
+    border-radius: 3px;
+}
+:focus:not(:focus-visible) { outline: none; }
+
+/* --- Masthead / nav ------------------------------------------------------ */
+.nav {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+    padding: 14px clamp(16px, 4vw, 40px);
+    background: rgba(33,26,20,.82);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(247,241,228,.10);
+}
+.brand {
+    color: var(--paper); font-family: var(--font-display);
+    font-weight: 900; font-size: 1.5rem; letter-spacing: -.01em;
+    display: inline-flex; align-items: center; gap: 10px;
+}
+.brand:hover { text-decoration: none; }
+.logo { font-size: 1.3rem; filter: grayscale(.1); }
+.nav-right { display: flex; align-items: center; gap: 8px 18px; flex-wrap: wrap; }
+.nav-right a {
+    color: rgba(247,241,228,.72); font-size: .82rem;
+    font-family: var(--font-mono); letter-spacing: .02em;
+    text-transform: uppercase; padding: 8px 4px;
+}
+.nav-right a:hover { color: var(--paper); text-decoration: none; }
+.who {
+    color: rgba(247,241,228,.55); font-size: .8rem;
+    font-family: var(--font-mono);
+}
+.badge-admin {
+    background: var(--stamp); color: #fff; font-size: .6rem; font-weight: 700;
+    padding: 2px 7px; border-radius: 999px; text-transform: uppercase;
+    letter-spacing: .08em; vertical-align: middle; margin-left: 2px;
+}
+.btn-ghost {
+    border: 1px solid rgba(247,241,228,.30); padding: 8px 16px;
+    border-radius: 999px; color: var(--paper) !important;
+    font-size: .8rem; min-height: 38px; display: inline-flex; align-items: center;
+    transition: background-color .15s ease, border-color .15s ease;
+    touch-action: manipulation;
+}
+.btn-ghost:hover { background: rgba(247,241,228,.12); border-color: rgba(247,241,228,.5); text-decoration: none; }
+
+/* --- Layout -------------------------------------------------------------- */
+.container { width: min(1040px, 92%); margin: clamp(24px, 5vh, 48px) auto; flex: 1; position: relative; z-index: 1; }
+.footer {
+    text-align: center; color: rgba(247,241,228,.45);
+    padding: 26px; font-size: .78rem; font-family: var(--font-mono);
+    letter-spacing: .04em; border-top: 1px solid rgba(247,241,228,.08);
+    position: relative; z-index: 1;
+}
+
+/* --- The signature: cream paper panels ----------------------------------- */
+.card {
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: var(--radius);
+    padding: clamp(20px, 3vw, 30px);
+    box-shadow: var(--shadow-paper);
+    margin-bottom: 26px;
+}
+.card h1, .card h2, .card h3 { font-family: var(--font-display); color: var(--ink); letter-spacing: -.015em; }
+.card h2 { margin-top: 0; font-size: 1.35rem; font-weight: 600; text-wrap: balance; }
+
+/* torn / perforated top + bottom edge — the "real receipt" tell */
+.torn { position: relative; }
+.torn::before, .torn::after {
+    content: ""; position: absolute; left: 0; right: 0; height: 10px;
+    background:
+        radial-gradient(circle at 7px 0, transparent 0 6px, var(--paper) 6px) repeat-x;
+    background-size: 16px 10px;
+}
+.torn::before { top: -9px; transform: scaleY(-1); }
+.torn::after  { bottom: -9px; }
+
+/* --- Headings on the desk ------------------------------------------------ */
+.page-title {
+    font-family: var(--font-display); color: var(--paper);
+    font-size: clamp(2rem, 5vw, 3rem); font-weight: 900;
+    letter-spacing: -.02em; line-height: 1.02; margin: 0 0 6px;
+    text-wrap: balance;
+}
+.eyebrow {
+    font-family: var(--font-mono); text-transform: uppercase;
+    letter-spacing: .22em; font-size: .72rem; color: var(--stamp);
+    margin: 0 0 12px;
+}
+
+/* --- Hero / upload ticket ------------------------------------------------ */
+.hero {
+    display: grid; grid-template-columns: 1.3fr .9fr; gap: 28px;
+    align-items: stretch; margin-bottom: 28px;
+}
+.hero-copy { align-self: center; }
+.hero-copy .muted { color: rgba(247,241,228,.68); max-width: 46ch; }
+.upload {
+    background: var(--paper); color: var(--ink); border-radius: var(--radius);
+    box-shadow: var(--shadow-paper); padding: 22px;
+    display: flex; flex-direction: column; gap: 14px;
+    border-top: 4px double var(--ink);
+}
+.upload .ticket-head {
+    font-family: var(--font-mono); font-size: .72rem; text-transform: uppercase;
+    letter-spacing: .14em; color: var(--ink-soft);
+    display: flex; justify-content: space-between; border-bottom: 1px dashed var(--rule);
+    padding-bottom: 10px;
+}
+.file-drop {
+    border: 2px dashed var(--rule); border-radius: var(--radius);
+    padding: 22px 16px; text-align: center; cursor: pointer; display: block;
+    color: var(--ink-soft); font-size: .9rem;
+    transition: border-color .15s ease, background-color .15s ease;
+}
+.file-drop:hover { border-color: var(--stamp); background: var(--paper-2); }
+.file-drop input { display: block; margin: 10px auto 0; font-size: .78rem; max-width: 100%; }
+
+/* --- Buttons ------------------------------------------------------------- */
+.btn, .btn-danger {
+    font-family: var(--font-mono); font-weight: 600; font-size: .85rem;
+    text-transform: uppercase; letter-spacing: .06em;
+    border: none; border-radius: var(--radius); padding: 13px 20px;
+    cursor: pointer; min-height: 46px; touch-action: manipulation;
+    transition: background-color .15s ease, transform .05s ease, box-shadow .15s ease;
+}
+.btn { background: var(--stamp); color: #fff; box-shadow: 0 2px 0 var(--stamp-dk); }
+.btn:hover { background: var(--stamp-dk); }
+.btn:active { transform: translateY(2px); box-shadow: none; }
+.btn-danger { background: transparent; color: var(--bad); border: 1.5px solid var(--bad); }
+.btn-danger:hover { background: var(--bad); color: #fff; }
+.btn-danger:active { transform: translateY(1px); }
+
+/* --- Stat figures -------------------------------------------------------- */
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 26px; }
+.stat { text-align: left; padding: 22px 24px; }
+.stat-label {
+    font-family: var(--font-mono); color: var(--ink-soft); font-size: .7rem;
+    text-transform: uppercase; letter-spacing: .14em;
+}
+.stat-value {
+    font-family: var(--font-mono); font-size: 2.4rem; font-weight: 600;
+    margin-top: 8px; color: var(--ink); font-variant-numeric: tabular-nums;
+    letter-spacing: -.02em;
+}
+.stat-value.small { font-size: 1.3rem; }
+.stat-sub { font-size: 1rem; color: var(--ink-soft); }
+
+/* --- Dotted leader rows (the receipt "menu" look) ------------------------ */
+.bars { display: flex; flex-direction: column; gap: 16px; margin-top: 6px; }
+.bar-row { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.leader { display: flex; align-items: baseline; gap: 8px; }
+.leader .name { font-weight: 600; white-space: nowrap; }
+.leader .dots { flex: 1; border-bottom: 2px dotted var(--rule); transform: translateY(-4px); }
+.leader .val { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bar-track { background: var(--paper-2); border-radius: 999px; height: 10px; overflow: hidden; border: 1px solid var(--rule); }
+.bar-fill { height: 100%; background: repeating-linear-gradient(45deg, var(--stamp), var(--stamp) 6px, var(--stamp-dk) 6px, var(--stamp-dk) 12px); }
+
+/* --- Tables -------------------------------------------------------------- */
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { text-align: left; padding: 13px 10px; border-bottom: 1px dashed var(--rule); }
+.table th {
+    font-family: var(--font-mono); color: var(--ink-soft); font-size: .68rem;
+    text-transform: uppercase; letter-spacing: .1em; border-bottom: 2px solid var(--ink);
+}
+.table tbody tr:last-child td { border-bottom: none; }
+.table tbody tr { transition: background-color .12s ease; }
+.table tbody tr:hover { background: var(--paper-2); }
+.num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.nowrap { white-space: nowrap; }
+.link { font-family: var(--font-mono); font-size: .82rem; font-weight: 600; }
+.ok  { color: var(--ok);  font-weight: 700; font-family: var(--font-mono); font-size: .8rem; }
+.bad { color: var(--bad); font-weight: 700; font-family: var(--font-mono); font-size: .8rem; }
+
+/* --- Category tags (warm, paper-tinted) ---------------------------------- */
+.tag {
+    display: inline-block; padding: 3px 11px; border-radius: 999px;
+    font-family: var(--font-mono); font-size: .72rem; font-weight: 600;
+    letter-spacing: .02em; border: 1px solid currentColor;
+    background: var(--paper-2); color: #5a4632;
+}
+.tag-groceries     { color:#3f6b2e; }
+.tag-dining        { color:#b3530f; }
+.tag-transport     { color:#2b5d80; }
+.tag-utilities     { color:#8a6d12; }
+.tag-healthcare    { color:#a3331f; }
+.tag-shopping      { color:#7a3370; }
+.tag-entertainment { color:#1f6e72; }
+.tag-other         { color:#6f6353; }
+
+/* --- Rubber-stamp status badge ------------------------------------------- */
+.stamp {
+    display: inline-block; font-family: var(--font-mono); font-weight: 700;
+    text-transform: uppercase; letter-spacing: .1em; font-size: .8rem;
+    padding: 6px 14px; border: 2.5px solid currentColor; border-radius: 4px;
+    transform: rotate(-6deg); opacity: .9;
+    box-shadow: inset 0 0 0 1px currentColor;
+}
+.stamp-ok  { color: var(--ok); }
+.stamp-bad { color: var(--bad); }
+
+/* --- Auth (a single receipt slip) ---------------------------------------- */
+.auth-card {
+    background: var(--paper); color: var(--ink);
+    max-width: 400px; margin: clamp(20px, 6vh, 56px) auto;
+    padding: 34px 32px; border-radius: var(--radius);
+    box-shadow: var(--shadow-paper); border-top: 4px double var(--ink);
+}
+.auth-card .eyebrow { text-align: center; }
+.auth-card h1 { font-family: var(--font-display); color: var(--ink); margin: 0 0 4px; text-align: center; font-size: 1.9rem; }
+.auth-card form { display: flex; flex-direction: column; gap: 16px; margin-top: 22px; }
+label { font-family: var(--font-mono); font-size: .72rem; font-weight: 600; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .08em; display: flex; flex-direction: column; gap: 7px; }
+input[type=text], input[type=password] {
+    font-family: var(--font-body); font-size: 1rem; font-weight: 400;
+    padding: 12px 13px; border: 1.5px solid var(--rule); border-radius: var(--radius);
+    background: #fffdf8; color: var(--ink); text-transform: none; letter-spacing: 0;
+}
+input::placeholder { color: #b3a892; }
+
+/* --- Receipt detail rendered like a printed slip ------------------------- */
+.detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+.raw {
+    background: #1c1610; color: #d9c9a8; padding: 18px; border-radius: var(--radius);
+    overflow-x: auto; font-family: var(--font-mono); font-size: .8rem; line-height: 1.6;
+    white-space: pre-wrap; max-height: 340px; border: 1px solid #3a2f22;
+}
+.meta-line { font-family: var(--font-mono); font-size: .78rem; color: var(--ink-soft); letter-spacing: .02em; }
+
+/* --- Flash messages (as torn note slips) --------------------------------- */
+.flash {
+    padding: 13px 16px 13px 18px; border-radius: var(--radius); margin-bottom: 16px;
+    font-weight: 500; background: var(--paper); color: var(--ink);
+    border-left: 5px solid var(--ink-soft); box-shadow: var(--shadow-paper);
+}
+.flash-success { border-left-color: var(--ok); }
+.flash-error   { border-left-color: var(--bad); }
+
+.muted  { color: var(--ink-soft); }
+.center { text-align: center; }
+
+/* --- Orchestrated page-load reveal (staggered) --------------------------- */
+@keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.reveal { animation: rise .55s cubic-bezier(.2,.7,.2,1) both; }
+.reveal:nth-child(2) { animation-delay: .06s; }
+.reveal:nth-child(3) { animation-delay: .12s; }
+.reveal:nth-child(4) { animation-delay: .18s; }
+.reveal:nth-child(5) { animation-delay: .24s; }
+
+/* Respect users who prefer reduced motion (accessibility) */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+    }
+}
+
+/* --- Responsive ---------------------------------------------------------- */
+@media (max-width: 760px) {
+    .hero { grid-template-columns: 1fr; }
+    .cards { grid-template-columns: 1fr; }
+}
